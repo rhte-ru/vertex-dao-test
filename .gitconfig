@@ -1,0 +1,13 @@
+# it shoulbe soft link to ~/.gitconfig
+
+[core]
+        excludesfile = /home/user/.gitignore_codenvy
+[user]
+        email = e2e-demo@rht.mont.com
+        name = e2e-demo
+[push]
+        default = simple
+
+[http "https://gogos.apps.ose.rht.mont.com"]
+  sslVerify = false
+#        cookieFile = /tmp/cookie.txt
