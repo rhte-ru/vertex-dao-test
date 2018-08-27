@@ -8,9 +8,9 @@ import io.vertx.codegen.annotations.ModuleGen;
 @DataObject(generateConverter = true)
 public class SimpleDataObject {
 
-    private UUID   id;
+    private String id;
     private String name;
-    private UUID   otherReference;
+    private String otherReference;
 
     public SimpleDataObject() {
         this.id = getDefaultId();
@@ -25,29 +25,34 @@ public class SimpleDataObject {
     }
 
     public SimpleDataObject(JsonObject json) {
-        SimpleDataObjectConverter(json, this);
+        SimpleDataObjectConverter.fromJson(json, this);
     }
 
-    private UUID getDefaultId() {
-        return UUID.randomUUID();
+    protected String getDefaultId() {
+        return UUID.randomUUID().toString();
     }
-    
-    public UUID getId() {
+
+    public String getId() {
         return id;
     }
-     public void setId(UUID id) {
+
+    public void setId(String id) {
         this.id = id;
     }
-    
+
     public String getName() {
         return name;
     }
-    
+
     public void setName(String name) {
         this.name = name;
     }
-    
-    public UUID getOtherReference() {
+
+    public String getOtherReference() {
         return otherReference;
+    }
+
+    public void setOtherReference(String otherReference) {
+        this.otherReference = otherReference;
     }
 }

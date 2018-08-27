@@ -8,6 +8,8 @@
 [push]
         default = simple
 
-[http "https://gogos.apps.ose.rht.mont.com"]
+[http]
   sslVerify = false
+#[http "https://gogos.apps.ose.rht.mont.com"]
+#  sslVerify = false
 #        cookieFile = /tmp/cookie.txt
