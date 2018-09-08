@@ -7,12 +7,17 @@ import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 
 public class DataGridVerticle<K, V> extends AbstractVerticle {
 
-    private static final Logger  LOGGER = LoggerFactory.getLogger(DataGridVerticle.class);
+    private static final Logger  LOGGER                        = LoggerFactory.getLogger(DataGridVerticle.class);
+
+    private static String        INFINISPAN_HOTROD_SERVER      = "infinispan.hotrod.server";
+    private static String        INFINISPAN_HOTROD_SERVER_HOST = INFINISPAN_HOTROD_SERVER + ".host";
+    private static String        INFINISPAN_HOTROD_SERVER_PORT = INFINISPAN_HOTROD_SERVER + ".port";
 
     protected RemoteCacheManager manager;
     protected RemoteCache<K, V>  cache;
@@ -21,7 +26,7 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
     public void start(Future<Void> startFuture) throws Exception {
         super.start(startFuture);
         vertx.<RemoteCache<K, V>> executeBlocking(future -> {
-            Configuration managerConfig = getConfiguration();
+            Configuration managerConfig = getCacheManagerConfiguration();
             manager = new RemoteCacheManager(managerConfig);
             LOGGER.debug("Created RemoteCacheManger=" + manager);
             RemoteCache<K, V> newCache = manager.getCache(config().getString("cache-name"));
@@ -36,7 +41,7 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
                 startFuture.fail(result.cause());
             }
         });
-        
+
     }
 
     @Override
@@ -50,15 +55,18 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
             stopFuture.complete();
         }
     }
-    
+
     protected void registerEndpointREST() {
-        if (config().getString("IS"))
+        //        if (config().getString("IS"))
     }
 
-    protected Configuration getConfiguration() {
-        final String host = "127.0.0.1";
-        final int port = 11222;
-        LOGGER.debug("Creating remote cache configuration for host=" + host + ", port=" + port);
+    protected Configuration getCacheManagerConfiguration() {
+        JsonObject vertxConfig = config();
+        final String host = vertxConfig.getString(INFINISPAN_HOTROD_SERVER_HOST, "127.0.0.1");
+        final int port = vertxConfig.getInteger(INFINISPAN_HOTROD_SERVER_PORT, 11222);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Creating remote cache configuration for host=" + host + ", port=" + port);
+        }
         Configuration config = new ConfigurationBuilder().addServer().host(host).port(port).build();
         return config;
     }
