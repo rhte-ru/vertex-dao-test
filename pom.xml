@@ -23,6 +23,11 @@
       <version>${vertx-version}</version>
     </dependency>
     <dependency>
+      <groupId>io.vertx</groupId>
+      <artifactId>vertx-web</artifactId>
+      <version>${vertx-version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.infinispan</groupId>
       <artifactId>infinispan-core</artifactId>
       <version>${infinispan-version}</version>
@@ -32,6 +37,7 @@
       <artifactId>infinispan-client-hotrod</artifactId>
       <version>${infinispan-version}</version>
     </dependency>
+<!-- test scope -->
     <dependency>
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>

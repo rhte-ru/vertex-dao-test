@@ -10,6 +10,8 @@ import io.vertx.core.Future;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.web.Router;
+import io.vertx.ext.web.handler.BodyHandler;
 
 public class DataGridVerticle<K, V> extends AbstractVerticle {
 
@@ -31,6 +33,7 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
             LOGGER.debug("Created RemoteCacheManger=" + manager);
             RemoteCache<K, V> newCache = manager.getCache(config().getString("cache-name"));
             LOGGER.debug("Got reference for RemoteCahe=" + cache);
+            registerEndpointREST();
             future.complete(newCache);
         }, result -> {
             if (result.succeeded()) {
@@ -58,6 +61,24 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
 
     protected void registerEndpointREST() {
         //        if (config().getString("IS"))
+        Router router = Router.router(vertx);
+/*        
+        // CORS support
+        Set<String> allowHeaders = new HashSet<>();
+        allowHeaders.add("x-requested-with");
+        allowHeaders.add("Access-Control-Allow-Origin");
+        allowHeaders.add("origin");
+        allowHeaders.add("Content-Type");
+        allowHeaders.add("accept");
+        Set<HttpMethod> allowMethods = new HashSet<>();
+        allowMethods.add(HttpMethod.GET);
+        allowMethods.add(HttpMethod.POST);
+        allowMethods.add(HttpMethod.DELETE);
+        allowMethods.add(HttpMethod.PATCH);
+
+        router.route().handler(CorsHandler.create("*")allowedHeaders(allowHeaders).allowedMethods(allowMethods));
+        */
+        router.route().handler(BodyHandler.create());
     }
 
     protected Configuration getCacheManagerConfiguration() {
