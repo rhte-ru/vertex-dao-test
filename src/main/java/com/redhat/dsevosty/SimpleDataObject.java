@@ -25,9 +25,9 @@ public class SimpleDataObject implements AbstractDataObject {
     }
 
     public SimpleDataObject(String id, String name, String ref) {
-      this.id = id;
-      this.name = name;
-      this.otherReference = ref;
+        this.id = id;
+        this.name = name;
+        this.otherReference = ref;
     }
 
     public SimpleDataObject(JsonObject json) {
@@ -39,6 +39,9 @@ public class SimpleDataObject implements AbstractDataObject {
     }
 
     public String getId() {
+        if (id == null) {
+            id = defaultId();
+        }
         return id;
     }
 
@@ -61,13 +64,13 @@ public class SimpleDataObject implements AbstractDataObject {
     public void setOtherReference(String otherReference) {
         this.otherReference = otherReference;
     }
-    
+
     public JsonObject toJson() {
-      JsonObject json = new JsonObject();
-      SimpleDataObjectConverter.toJson(this, json);
-      return json;
+        JsonObject json = new JsonObject();
+        SimpleDataObjectConverter.toJson(this, json);
+        return json;
     }
-    
+
     public String toString() {
         return toStringAbstract();
     }
