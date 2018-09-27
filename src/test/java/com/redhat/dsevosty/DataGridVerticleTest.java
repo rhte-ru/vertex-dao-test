@@ -50,11 +50,14 @@ public class DataGridVerticleTest {
         vertx = Vertx.vertx();
         // if (cacheManager == null) {
         vertx.<EmbeddedCacheManager>executeBlocking(future -> {
-            Configuration config = new ConfigurationBuilder().build();
-            EmbeddedCacheManager cm = new DefaultCacheManager(config);
+            // Configuration config = new ConfigurationBuilder().build();
+            // LOGGER.debug("CacheManager configuration: " + config);
+            // EmbeddedCacheManager cm = new DefaultCacheManager(config);
+            EmbeddedCacheManager cm = new DefaultCacheManager();
+            LOGGER.debug("CacheManager: " + cm);
             cacheManager.defineConfiguration(CACHE_NAME, new ConfigurationBuilder().build());
-            Cache<String, SimpleDataObject> c = cacheManager.getCache(CACHE_NAME);
-            LOGGER.info("Local cache " + c + " created");
+            // Cache<String, SimpleDataObject> c = cacheManager.getCache(CACHE_NAME);
+            // LOGGER.info("Local cache " + c + " created");
             future.complete(cm);
         }, result -> {
             if (result.succeeded()) {
@@ -75,6 +78,7 @@ public class DataGridVerticleTest {
                         JsonObject json = new JsonObject().put(HTTP_SERVER_PORT, 8080).put("cache-name", CACHE_NAME);
                         DeploymentOptions options = new DeploymentOptions().setConfig(json);
                         vertx.deployVerticle(DataGridVerticle.class.getName(), options);
+                        LOGGER.info("Vertice " + DataGridVerticle.class.getName() + " deployed");
                         context.asyncAssertSuccess();
                     } else {
                         LOGGER.error("Error during create HotRodServer", result2.cause());
@@ -119,26 +123,37 @@ public class DataGridVerticleTest {
     // async.complete();
     // }
 
-    // @Test
+    @Test
     public void testDataGridVerticleAddSDO(TestContext context) {
-        // final Async async = context.async();
-        final WebClient webClient = WebClient.create(vertx);
+        final Async async = context.async();
+        // final WebClient webClient = WebClient.create(vertx);
         final String name_1 = "name 1";
         final String ref_1 = "referrence 1";
         final SimpleDataObject sdo = new SimpleDataObject(null, name_1, ref_1);
         myId = sdo.getId();
+        final String sdoString = sdo.toJson().toString();
         // final int httpPort =
         // vertx.getOrCreateContext().config().getInteger(HTTP_SERVER_PORT);
-        webClient.get(8080, HOTROD_SERVER_HOST, "/sdo").sendJsonObject(sdo.toJson(),
-                context.asyncAssertSuccess(response -> {
-                    context.assertEquals(HttpResponseStatus.CREATED.code(), response.statusCode());
-                    final SimpleDataObject responseSDO = new SimpleDataObject(
-                            new JsonObject(response.body().toString()));
-                    context.assertEquals(responseSDO.getName(), name_1);
-                    context.assertEquals(responseSDO.getOtherReference(), ref_1);
-                    context.assertEquals(responseSDO.getId(), sdo.getId());
-                    context.async().complete();
-                }));
+        vertx.createHttpClient().post(8080, "localhost", "/sdo").putHeader("Content-Type", "application/json")
+                .putHeader("Content-Length", Integer.toString(sdoString.length())).handler(response -> {
+                    context.assertEquals(response.statusCode(), 201);
+                    context.assertTrue(response.headers().get("content-type").contains("application/json"));
+                    response.bodyHandler(body -> {
+                        System.out.println("BODY: " + body);
+                        async.complete();
+                    });
+                }).write(sdoString).end();
+        // webClient.get(8080, HOTROD_SERVER_HOST, "/sdo").sendJsonObject(sdo.toJson(),
+        // context.asyncAssertSuccess(response -> {
+        // context.assertEquals(HttpResponseStatus.CREATED.code(),
+        // response.statusCode());
+        // final SimpleDataObject responseSDO = new SimpleDataObject(
+        // new JsonObject(response.body().toString()));
+        // context.assertEquals(responseSDO.getName(), name_1);
+        // context.assertEquals(responseSDO.getOtherReference(), ref_1);
+        // context.assertEquals(responseSDO.getId(), sdo.getId());
+        // context.async().complete();
+        // }));
     }
 
     // @Test

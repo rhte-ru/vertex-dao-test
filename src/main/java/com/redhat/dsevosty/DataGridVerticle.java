@@ -18,30 +18,31 @@ import io.vertx.ext.web.handler.BodyHandler;
 
 public class DataGridVerticle<K, V> extends AbstractVerticle {
 
-    private static final Logger                     LOGGER                        = LoggerFactory.getLogger(DataGridVerticle.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DataGridVerticle.class);
 
-    public static String                            INFINISPAN_HOTROD_SERVER      = "infinispan.hotrod.server";
-    public static String                            INFINISPAN_HOTROD_SERVER_HOST = INFINISPAN_HOTROD_SERVER + ".host";
-    public static String                            INFINISPAN_HOTROD_SERVER_PORT = INFINISPAN_HOTROD_SERVER + ".port";
+    public static String INFINISPAN_HOTROD_SERVER = "infinispan.hotrod.server";
+    public static String INFINISPAN_HOTROD_SERVER_HOST = INFINISPAN_HOTROD_SERVER + ".host";
+    public static String INFINISPAN_HOTROD_SERVER_PORT = INFINISPAN_HOTROD_SERVER + ".port";
 
-    public static String                            HTTP_SERVER                   = "http.server";
-    public static String                            HTTP_SERVER_HOST              = HTTP_SERVER + ".host";
-    public static String                            HTTP_SERVER_PORT              = HTTP_SERVER + ".port";
+    public static String HTTP_SERVER = "http.server";
+    public static String HTTP_SERVER_HOST = HTTP_SERVER + ".host";
+    public static String HTTP_SERVER_PORT = HTTP_SERVER + ".port";
 
-
-    protected RemoteCacheManager                    manager;
+    protected RemoteCacheManager manager;
     protected RemoteCache<String, SimpleDataObject> cache;
 
     @Override
     public void start(Future<Void> startFuture) throws Exception {
-        //        final String logFactory = System.getProperty("vertx.logger-delegate-factory-class-name");
-        //        if (logFactory == null || logFactory.equals("")) {
-        //          System.setProperty("vertx.logger-delegate-factory-class-name", "io.vertx.core.logging.Log4j2LogDelegateFactory");
-        //        }
+        // final String logFactory =
+        // System.getProperty("vertx.logger-delegate-factory-class-name");
+        // if (logFactory == null || logFactory.equals("")) {
+        // System.setProperty("vertx.logger-delegate-factory-class-name",
+        // "io.vertx.core.logging.Log4j2LogDelegateFactory");
+        // }
         LOGGER.info("Vertx uses LOGGER: " + LOGGER + ", LoggerDelegate is " + LOGGER.getDelegate());
         LOGGER.debug("DEBUG: Vertx uses LOGGER: " + LOGGER + ", LoggerDelegate is " + LOGGER.getDelegate());
         super.start(startFuture);
-        vertx.<RemoteCache<String, SimpleDataObject>> executeBlocking(future -> {
+        vertx.<RemoteCache<String, SimpleDataObject>>executeBlocking(future -> {
             Configuration managerConfig = getCacheManagerConfiguration();
             manager = new RemoteCacheManager(managerConfig);
             LOGGER.info("Created RemoteCacheManger=" + manager);
@@ -76,30 +77,25 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
     }
 
     protected void registerEndpointREST(Future<Void> startFuture) {
-        //        if (config().getString("IS"))
+        // if (config().getString("IS"))
         Router router = Router.router(vertx);
-        /*        
-         // CORS support
-         Set<String> allowHeaders = new HashSet<>();
-         allowHeaders.add("x-requested-with");
-         allowHeaders.add("Access-Control-Allow-Origin");
-         allowHeaders.add("origin");
-         allowHeaders.add("Content-Type");
-         allowHeaders.add("accept");
-         Set<HttpMethod> allowMethods = new HashSet<>();
-         allowMethods.add(HttpMethod.GET);
-         allowMethods.add(HttpMethod.POST);
-         allowMethods.add(HttpMethod.DELETE);
-         allowMethods.add(HttpMethod.PATCH);
-
-         router.route().handler(CorsHandler.create("*")allowedHeaders(allowHeaders).allowedMethods(allowMethods));
+        /*
+         * // CORS support Set<String> allowHeaders = new HashSet<>();
+         * allowHeaders.add("x-requested-with");
+         * allowHeaders.add("Access-Control-Allow-Origin"); allowHeaders.add("origin");
+         * allowHeaders.add("Content-Type"); allowHeaders.add("accept"); Set<HttpMethod>
+         * allowMethods = new HashSet<>(); allowMethods.add(HttpMethod.GET);
+         * allowMethods.add(HttpMethod.POST); allowMethods.add(HttpMethod.DELETE);
+         * allowMethods.add(HttpMethod.PATCH);
+         * 
+         * router.route().handler(CorsHandler.create("*")allowedHeaders(allowHeaders).
+         * allowedMethods(allowMethods));
          */
         router.route().handler(BodyHandler.create());
         router.get("/sdo/:id").handler(this::getSDO);
         router.post("/sdo").handler(this::addSDO);
-        //        router.patch("/sdo/:id").handler(this::apiUpdate);
-        //        router.delete("/sdo/:id").handler(this::apiDelete);
-
+        // router.patch("/sdo/:id").handler(this::apiUpdate);
+        // router.delete("/sdo/:id").handler(this::apiDelete);
 
         JsonObject vertxConfig = config();
         final String host = vertxConfig.getString(HTTP_SERVER_HOST, "127.0.0.1");
@@ -124,7 +120,6 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
         context.fail(HttpResponseStatus.INTERNAL_SERVER_ERROR.code());
         context.fail(th);
     }
-
 
     protected void getSDO(RoutingContext context) {
         final String id = context.request().getParam("id");
@@ -180,7 +175,6 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
     protected boolean removeSimpleDataObject(SimpleDataObject dto) {
         return cache.remove(dto.getId(), dto);
     }
-
 
     protected Configuration getCacheManagerConfiguration() {
         JsonObject vertxConfig = config();

@@ -10,7 +10,7 @@ import io.vertx.core.Vertx;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
-// @RunWith(VertxUnitRunner.class)
+@RunWith(VertxUnitRunner.class)
 public class SimpleVerticleTest {
 
     private Vertx vertx;
