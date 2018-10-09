@@ -6,10 +6,12 @@ import org.junit.Test;
 
 public class AbstractFataObjectTest {
 
-   @Test
+    @Test
     public void testAbstractDataObjectToString() {
         AbstractDataObject dto = new AbstractDataObject() {
-            private int    id   = 1;
+            @SuppressWarnings("unused")
+            private static final long serialVersionUID = 0;
+            private int id = 1;
             private String name = "name 1";
 
             @SuppressWarnings("unused")
