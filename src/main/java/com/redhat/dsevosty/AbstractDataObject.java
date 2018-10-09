@@ -1,5 +1,6 @@
 package com.redhat.dsevosty;
 
+import java.io.Serializable;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
@@ -7,7 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public interface AbstractDataObject {
+public interface AbstractDataObject extends Serializable {
 
     default String toStringAbstract() {
         StringBuffer sb = new StringBuffer();

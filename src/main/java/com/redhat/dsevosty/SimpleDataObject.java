@@ -3,10 +3,13 @@ package com.redhat.dsevosty;
 import java.util.UUID;
 import io.vertx.core.json.JsonObject;
 import io.vertx.codegen.annotations.DataObject;
-import io.vertx.codegen.annotations.ModuleGen;
+// import io.vertx.codegen.annotations.ModuleGen;
 
 @DataObject(generateConverter = true)
 public class SimpleDataObject implements AbstractDataObject {
+
+    @SuppressWarnings("unused")
+    private static final long serialVersionUID = 1;
 
     private String id;
     private String name;

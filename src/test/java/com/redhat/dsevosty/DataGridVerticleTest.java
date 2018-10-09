@@ -1,25 +1,11 @@
 package com.redhat.dsevosty;
 
-import io.netty.handler.codec.http.HttpResponseStatus;
-import io.vertx.core.DeploymentOptions;
-import io.vertx.core.Future;
-import io.vertx.core.Vertx;
-import io.vertx.core.json.JsonObject;
-import io.vertx.core.logging.Logger;
-import io.vertx.core.logging.LoggerFactory;
-import io.vertx.ext.unit.Async;
-import io.vertx.ext.unit.TestContext;
-import io.vertx.ext.unit.junit.VertxUnitRunner;
-import io.vertx.ext.web.client.WebClient;
-
-import java.io.IOException;
-import java.net.ServerSocket;
+import java.util.concurrent.CompletableFuture;
 
 import org.infinispan.Cache;
+import org.infinispan.client.hotrod.RemoteCache;
+import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
-import org.infinispan.configuration.cache.Configuration;
-import org.infinispan.configuration.global.GlobalConfiguration;
-import org.infinispan.configuration.global.GlobalConfigurationBuilder;
 import org.infinispan.manager.DefaultCacheManager;
 import org.infinispan.manager.EmbeddedCacheManager;
 import org.infinispan.server.hotrod.HotRodServer;
@@ -29,6 +15,14 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import io.vertx.core.Vertx;
+import io.vertx.core.json.JsonObject;
+import io.vertx.core.logging.Logger;
+import io.vertx.core.logging.LoggerFactory;
+import io.vertx.ext.unit.Async;
+import io.vertx.ext.unit.TestContext;
+import io.vertx.ext.unit.junit.VertxUnitRunner;
+
 @RunWith(VertxUnitRunner.class)
 public class DataGridVerticleTest {
 
@@ -36,140 +30,82 @@ public class DataGridVerticleTest {
 
     private static final String HOTROD_SERVER_HOST = "127.0.0.1";
     private static final int HOTROD_SERVER_PORT = 11222;
-    private static final String HTTP_SERVER_PORT = "http.port";
+    // private static final String HTTP_SERVER_PORT = "http.port";
     private static final String CACHE_NAME = "sdo";
 
-    private EmbeddedCacheManager cacheManager;
-    private HotRodServer hotrodServer;
     private Vertx vertx;
-
-    private String myId;
 
     @Before
     public void setUp(TestContext context) {
         vertx = Vertx.vertx();
-        // if (cacheManager == null) {
+        Async cacheManagerAsync = context.async();
+        Async hostrodServerAsync = context.async();
         vertx.<EmbeddedCacheManager>executeBlocking(future -> {
-            // Configuration config = new ConfigurationBuilder().build();
-            // LOGGER.debug("CacheManager configuration: " + config);
-            // EmbeddedCacheManager cm = new DefaultCacheManager(config);
             EmbeddedCacheManager cm = new DefaultCacheManager();
             LOGGER.debug("CacheManager: " + cm);
-            cacheManager.defineConfiguration(CACHE_NAME, new ConfigurationBuilder().build());
-            // Cache<String, SimpleDataObject> c = cacheManager.getCache(CACHE_NAME);
-            // LOGGER.info("Local cache " + c + " created");
+            cm.defineConfiguration(CACHE_NAME, new ConfigurationBuilder().build());
+            Cache<String, SimpleDataObject> cache = cm.<String, SimpleDataObject>getCache(CACHE_NAME);
+            LOGGER.debug("CACHE: " + cache + " got");
             future.complete(cm);
         }, result -> {
             if (result.succeeded()) {
-                cacheManager = result.result();
-                vertx.<HotRodServer>executeBlocking(future2 -> {
-                    HotRodServer server = new HotRodServer();
-                    HotRodServerConfigurationBuilder config = new HotRodServerConfigurationBuilder()
-                            .host(HOTROD_SERVER_HOST).port(HOTROD_SERVER_PORT);
-                    server.start(config.build(), cacheManager);
-                    LOGGER.info("HotRod Server " + server + " started");
-                    future2.complete(server);
-                }, result2 -> {
-                    if (result2.succeeded()) {
-                        hotrodServer = result2.result();
-                        // ServerSocket socket = new ServerSocket(0);
-                        // final int httpServerPort = socket.getLocalPort();
-                        // socket.close();
-                        JsonObject json = new JsonObject().put(HTTP_SERVER_PORT, 8080).put("cache-name", CACHE_NAME);
-                        DeploymentOptions options = new DeploymentOptions().setConfig(json);
-                        vertx.deployVerticle(DataGridVerticle.class.getName(), options);
-                        LOGGER.info("Vertice " + DataGridVerticle.class.getName() + " deployed");
-                        context.asyncAssertSuccess();
-                    } else {
-                        LOGGER.error("Error during create HotRodServer", result2.cause());
-                        context.asyncAssertFailure();
-                    }
-                });
+                context.put("CACHE_MANAGER", result.result());
+                cacheManagerAsync.complete();
             } else {
                 LOGGER.error("Error during create EmbeddedCacheManager", result.cause());
-                context.asyncAssertFailure();
             }
         });
-        // }
 
-        // ServerSocket socket = new ServerSocket(0);
-        // final int httpServerPort = socket.getLocalPort();
-        // socket.close();
-        // JsonObject json = new JsonObject().put(HTTP_SERVER_PORT,
-        // httpServerPort).put("cache-name", CACHE_NAME);
-        // DeploymentOptions options = new DeploymentOptions().setConfig(json);
-        // vertx.deployVerticle(DataGridVerticle.class.getName(), options);
-        // vertx.deployVerticle(DataGridVerticle.class.getName(), options,
-        // context.asyncAssertSuccess(did -> {
-        // vertxDeploymentId = did;
-        // }));
+        cacheManagerAsync.awaitSuccess(10000);
+
+        vertx.<HotRodServer>executeBlocking(future -> {
+            HotRodServer server = new HotRodServer();
+            HotRodServerConfigurationBuilder config = new HotRodServerConfigurationBuilder().host(HOTROD_SERVER_HOST)
+                    .defaultCacheName(CACHE_NAME).port(HOTROD_SERVER_PORT);
+            server.start(config.build(), context.get("CACHE_MANAGER"));
+            LOGGER.info("HotRod Server " + server + " started");
+            future.complete(server);
+        }, result -> {
+            if (result.succeeded()) {
+                context.put("HOTROD", result.result());
+                hostrodServerAsync.complete();
+            } else {
+                LOGGER.error("Error during create HotRodServer", result.cause());
+            }
+        });
+        hostrodServerAsync.awaitSuccess(10000);
     }
 
     @After
     public void teardDown(TestContext context) {
-        vertx.close(context.asyncAssertSuccess());
-        if (hotrodServer != null) {
-            hotrodServer.getTransport().stop();
-            hotrodServer.stop();
-        }
-        if (cacheManager != null) {
-            cacheManager.stop();
-        }
+        // vertx.close(context.asyncAssertSuccess());
+        // if (hotrodServer != null) {
+        // hotrodServer.getTransport().stop();
+        // hotrodServer.stop();
+        //
+        // if (cacheManager != null) {
+        // cacheManager.stop();
+        //
     }
-
-    // @Test
-    // public void dummy(TestContext context) {
-    // final Async async = context.async();
-    // async.complete();
-    // }
 
     @Test
-    public void testDataGridVerticleAddSDO(TestContext context) {
-        final Async async = context.async();
-        // final WebClient webClient = WebClient.create(vertx);
-        final String name_1 = "name 1";
-        final String ref_1 = "referrence 1";
-        final SimpleDataObject sdo = new SimpleDataObject(null, name_1, ref_1);
+    public void testSDO(TestContext context) {
+        String myId;
+        SimpleDataObject sdo = new SimpleDataObject(null, "name 1", null);
+        sdo.setOtherReference(sdo.getId());
         myId = sdo.getId();
-        final String sdoString = sdo.toJson().toString();
-        // final int httpPort =
-        // vertx.getOrCreateContext().config().getInteger(HTTP_SERVER_PORT);
-        vertx.createHttpClient().post(8080, "localhost", "/sdo").putHeader("Content-Type", "application/json")
-                .putHeader("Content-Length", Integer.toString(sdoString.length())).handler(response -> {
-                    context.assertEquals(response.statusCode(), 201);
-                    context.assertTrue(response.headers().get("content-type").contains("application/json"));
-                    response.bodyHandler(body -> {
-                        System.out.println("BODY: " + body);
-                        async.complete();
-                    });
-                }).write(sdoString).end();
-        // webClient.get(8080, HOTROD_SERVER_HOST, "/sdo").sendJsonObject(sdo.toJson(),
-        // context.asyncAssertSuccess(response -> {
-        // context.assertEquals(HttpResponseStatus.CREATED.code(),
-        // response.statusCode());
-        // final SimpleDataObject responseSDO = new SimpleDataObject(
-        // new JsonObject(response.body().toString()));
-        // context.assertEquals(responseSDO.getName(), name_1);
-        // context.assertEquals(responseSDO.getOtherReference(), ref_1);
-        // context.assertEquals(responseSDO.getId(), sdo.getId());
-        // context.async().complete();
-        // }));
-    }
-
-    // @Test
-    public void testDataGridVerticleGetSDO(TestContext context) {
-        // final Async async = context.async();
-        final WebClient webClient = WebClient.create(vertx);
-        webClient.get(vertx.getOrCreateContext().config().getInteger(HTTP_SERVER_PORT), HOTROD_SERVER_HOST,
-                "/sdo" + myId).send(context.asyncAssertSuccess(response -> {
-                    context.assertEquals(HttpResponseStatus.OK, response.statusCode());
-                    final SimpleDataObject responseSDO = new SimpleDataObject(
-                            new JsonObject(response.body().toString()));
-                    // context.assertEquals(responseSDO.getName(), name_1);
-                    // context.assertEquals(responseSDO.getOtherReference(), ref_1);
-                    context.assertEquals(responseSDO.getId(), myId);
-                    context.async().complete();
-                }));
+        LOGGER.debug("MY SDO ID: " + myId);
+        org.infinispan.client.hotrod.configuration.ConfigurationBuilder builder = new org.infinispan.client.hotrod.configuration.ConfigurationBuilder();
+        builder.addServer().host(HOTROD_SERVER_HOST).port(HOTROD_SERVER_PORT);
+        RemoteCache<String, SimpleDataObject> cache = new RemoteCacheManager(builder.build()).getCache(CACHE_NAME);
+        LOGGER.info("REMOTE CACHE: " + cache + " got");
+        LOGGER.info("PUT OBJECT: " + cache.put(myId, sdo));
+        SimpleDataObject sdo2 = cache.get(myId);
+        LOGGER.info("GET OBJECT: " + sdo2.toJson().encodePrettily());
+        context.assertNotNull(sdo2);
+        context.assertEquals(sdo2.getName(), sdo.getName());
+        cache.remove(myId);
+        context.assertNull(cache.get(myId));
     }
 
 }

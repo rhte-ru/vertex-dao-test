@@ -6,7 +6,7 @@ import org.junit.Test;
 
 public class AbstractFataObjectTest {
 
-//    @Test
+   @Test
     public void testAbstractDataObjectToString() {
         AbstractDataObject dto = new AbstractDataObject() {
             private int    id   = 1;

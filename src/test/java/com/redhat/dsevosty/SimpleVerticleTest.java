@@ -7,6 +7,7 @@ import org.junit.runner.RunWith;
 
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.Vertx;
+import io.vertx.ext.unit.Async;
 import io.vertx.ext.unit.TestContext;
 import io.vertx.ext.unit.junit.VertxUnitRunner;
 
@@ -28,11 +29,13 @@ public class SimpleVerticleTest {
 
     @Test
     public void testVertexWebRootContext(TestContext tc) {
-        vertx.createHttpClient().getNow(8080, "localhost", "/", response -> response.handler(body -> {
+        Async async = tc.async();
+        vertx.createHttpClient().getNow(8181, "localhost", "/", response -> response.handler(body -> {
             System.out.println("StatusCode: " + response.statusCode() + "\nBody: " + body);
             tc.assertEquals(response.statusCode(), HttpResponseStatus.OK.code());
             tc.assertTrue(body.toString().contains("Simplest page"));
-            tc.async().complete();
+            async.complete();
         }));
+        async.awaitSuccess(10000);
     }
 }
