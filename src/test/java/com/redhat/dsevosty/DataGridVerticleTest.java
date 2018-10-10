@@ -115,16 +115,16 @@ public class DataGridVerticleTest {
         final String HTTP_HOST = "127.0.0.1";
         final int HTTP_PORT = 8080;
         final HttpClient http = vertx.createHttpClient();
-        // http.getNow(HTTP_PORT, HTTP_HOST, "/", response -> response.handler(body -> {
-        // LOGGER.info(body.toString());
-        // }));
+        http.getNow(HTTP_PORT, HTTP_HOST, "/", response -> response.handler(body -> {
+            LOGGER.info(body.toString());
+        }));
         Async post = context.async();
         http.post(HTTP_PORT, HTTP_HOST, "/sdo").handler(response -> {
             final int statusCode = response.statusCode();
             LOGGER.info("StatusCode on post request for sdo=" + sdo + " is " + statusCode);
             context.assertEquals(statusCode, HttpResponseStatus.CREATED.code());
             response.bodyHandler(body -> {
-                // context.assertEquals(sdo, new SimpleDataObject(new JsonObject(body)));
+                context.assertEquals(sdo, new SimpleDataObject(new JsonObject(body)));
                 post.complete();
             });
         }).end(sdo.toJson().toString());
@@ -164,7 +164,8 @@ public class DataGridVerticleTest {
         });
         get2.awaitSuccess(1000);
 
-        if (post.isCompleted() && get.isCompleted() && update.isCompleted() && delete.isCompleted() && get2.isCompleted()) {
+        if (post.isCompleted() && get.isCompleted() && update.isCompleted() && delete.isCompleted()
+                && get2.isCompleted()) {
             async.complete();
         }
         async.awaitSuccess(6000);
