@@ -13,7 +13,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import io.netty.handler.codec.http.HttpResponseStatus;
+import io.vertx.core.DeploymentOptions;
 import io.vertx.core.Vertx;
+import io.vertx.core.http.HttpClient;
+import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
 import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.unit.Async;
@@ -71,11 +75,15 @@ public class DataGridVerticleTest {
             }
         });
         hostrodServerAsync.awaitSuccess(10000);
+        DeploymentOptions options = new DeploymentOptions();
+        options.setConfig(new JsonObject().put("cache-name", CACHE_NAME));
+        vertx.deployVerticle(DataGridVerticle.class, options, context.asyncAssertSuccess());
+        // context.async().awaitSuccess(20000);
     }
 
     @After
     public void teardDown(TestContext context) {
-        // vertx.close(context.asyncAssertSuccess());
+        vertx.close(context.asyncAssertSuccess());
         // if (hotrodServer != null) {
         // hotrodServer.getTransport().stop();
         // hotrodServer.stop();
@@ -103,6 +111,62 @@ public class DataGridVerticleTest {
         context.assertEquals(sdo2.getName(), sdo.getName());
         cache.remove(myId);
         context.assertNull(cache.get(myId));
-    }
+        Async async = context.async();
+        final String HTTP_HOST = "127.0.0.1";
+        final int HTTP_PORT = 8080;
+        final HttpClient http = vertx.createHttpClient();
+        // http.getNow(HTTP_PORT, HTTP_HOST, "/", response -> response.handler(body -> {
+        // LOGGER.info(body.toString());
+        // }));
+        Async post = context.async();
+        http.post(HTTP_PORT, HTTP_HOST, "/sdo").handler(response -> {
+            final int statusCode = response.statusCode();
+            LOGGER.info("StatusCode on post request for sdo=" + sdo + " is " + statusCode);
+            context.assertEquals(statusCode, HttpResponseStatus.CREATED.code());
+            response.bodyHandler(body -> {
+                // context.assertEquals(sdo, new SimpleDataObject(new JsonObject(body)));
+                post.complete();
+            });
+        }).end(sdo.toJson().toString());
+        post.awaitSuccess(1000);
+        Async get = context.async();
+        http.getNow(HTTP_PORT, HTTP_HOST, "/sdo/" + myId, response -> response.handler(body -> {
+            LOGGER.info("StatusCode: " + response.statusCode() + "\nBody: " + body);
+            context.assertEquals(response.statusCode(), HttpResponseStatus.OK.code());
+            context.assertEquals(sdo, new SimpleDataObject(new JsonObject(body)));
+            get.complete();
+        }));
+        get.awaitSuccess(1000);
+        sdo.setOtherReference(null);
+        Async update = context.async();
+        http.put(HTTP_PORT, HTTP_HOST, "/sdo/" + myId).handler(response -> {
+            final int statusCode = response.statusCode();
+            LOGGER.info("StatusCode on update request for sdo=" + sdo + " is " + statusCode);
+            context.assertEquals(statusCode, HttpResponseStatus.OK.code());
+            response.bodyHandler(body -> {
+                context.assertEquals(sdo, new SimpleDataObject(new JsonObject(body)));
+                update.complete();
+            });
+        }).end(sdo.toJson().toString());
+        update.awaitSuccess(1000);
+        Async delete = context.async();
+        http.delete(HTTP_PORT, HTTP_HOST, "/sdo/" + myId).handler(response -> {
+            final int statusCode = response.statusCode();
+            LOGGER.info("StatusCode on delete request for sdo=" + sdo + " is " + statusCode);
+            context.assertEquals(statusCode, HttpResponseStatus.NO_CONTENT.code());
+            delete.complete();
+        }).end();
+        delete.awaitSuccess(1000);
+        Async get2 = context.async();
+        http.getNow(HTTP_PORT, HTTP_HOST, "/sdo/" + myId, response -> {
+            context.assertEquals(response.statusCode(), HttpResponseStatus.NOT_FOUND.code());
+            get2.complete();
+        });
+        get2.awaitSuccess(1000);
 
+        if (post.isCompleted() && get.isCompleted() && update.isCompleted() && delete.isCompleted() && get2.isCompleted()) {
+            async.complete();
+        }
+        async.awaitSuccess(6000);
+    }
 }

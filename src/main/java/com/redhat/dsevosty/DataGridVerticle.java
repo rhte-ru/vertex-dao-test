@@ -1,5 +1,8 @@
 package com.redhat.dsevosty;
 
+import java.util.Set;
+import java.util.HashSet;
+
 import org.infinispan.client.hotrod.RemoteCache;
 import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.client.hotrod.configuration.Configuration;
@@ -8,6 +11,7 @@ import org.infinispan.client.hotrod.configuration.ConfigurationBuilder;
 import io.netty.handler.codec.http.HttpResponseStatus;
 import io.vertx.core.AbstractVerticle;
 import io.vertx.core.Future;
+import io.vertx.core.http.HttpMethod;
 import io.vertx.core.http.HttpServerResponse;
 import io.vertx.core.json.JsonObject;
 import io.vertx.core.logging.Logger;
@@ -15,6 +19,7 @@ import io.vertx.core.logging.LoggerFactory;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.CorsHandler;
 
 public class DataGridVerticle<K, V> extends AbstractVerticle {
 
@@ -41,7 +46,6 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
         // }
         LOGGER.info("Vertx uses LOGGER: " + LOGGER + ", LoggerDelegate is " + LOGGER.getDelegate());
         LOGGER.debug("DEBUG: Vertx uses LOGGER: " + LOGGER + ", LoggerDelegate is " + LOGGER.getDelegate());
-        super.start(startFuture);
         vertx.<RemoteCache<String, SimpleDataObject>>executeBlocking(future -> {
             Configuration managerConfig = getCacheManagerConfiguration();
             manager = new RemoteCacheManager(managerConfig);
@@ -49,7 +53,7 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
             final String cacheName = config().getString("cache-name");
             LOGGER.debug("Trying to get cache: " + cacheName);
             RemoteCache<String, SimpleDataObject> newCache = manager.getCache(cacheName);
-            LOGGER.debug("Got reference for RemoteCahe=" + cache);
+            LOGGER.debug("Got reference for RemoteCahe=" + newCache);
             future.complete(newCache);
         }, result -> {
             if (result.succeeded()) {
@@ -61,7 +65,7 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
                 startFuture.fail(result.cause());
             }
         });
-
+        // super.start(startFuture);
     }
 
     @Override
@@ -79,23 +83,28 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
     protected void registerEndpointREST(Future<Void> startFuture) {
         // if (config().getString("IS"))
         Router router = Router.router(vertx);
-        /*
-         * // CORS support Set<String> allowHeaders = new HashSet<>();
-         * allowHeaders.add("x-requested-with");
-         * allowHeaders.add("Access-Control-Allow-Origin"); allowHeaders.add("origin");
-         * allowHeaders.add("Content-Type"); allowHeaders.add("accept"); Set<HttpMethod>
-         * allowMethods = new HashSet<>(); allowMethods.add(HttpMethod.GET);
-         * allowMethods.add(HttpMethod.POST); allowMethods.add(HttpMethod.DELETE);
-         * allowMethods.add(HttpMethod.PATCH);
-         * 
-         * router.route().handler(CorsHandler.create("*")allowedHeaders(allowHeaders).
-         * allowedMethods(allowMethods));
-         */
+        // CORS support
+        Set<String> allowHeaders = new HashSet<String>();
+        allowHeaders.add("x-requested-with");
+        allowHeaders.add("Access-Control-Allow-Origin");
+        allowHeaders.add("origin");
+        allowHeaders.add("Content-Type");
+        allowHeaders.add("accept");
+        Set<HttpMethod> allowMethods = new HashSet<>();
+        allowMethods.add(HttpMethod.GET);
+        allowMethods.add(HttpMethod.POST);
+        allowMethods.add(HttpMethod.DELETE);
+        allowMethods.add(HttpMethod.PATCH);
+
+        router.route().handler(CorsHandler.create("*").allowedHeaders(allowHeaders).allowedMethods(allowMethods));
+
         router.route().handler(BodyHandler.create());
+        router.route("/").handler(this::getROOT);
         router.get("/sdo/:id").handler(this::getSDO);
         router.post("/sdo").handler(this::addSDO);
-        // router.patch("/sdo/:id").handler(this::apiUpdate);
-        // router.delete("/sdo/:id").handler(this::apiDelete);
+        router.put("/sdo/:id").handler(this::updateSDO);
+        router.patch("/sdo/:id").handler(this::updateSDO);
+        router.delete("/sdo/:id").handler(this::removeSDO);
 
         JsonObject vertxConfig = config();
         final String host = vertxConfig.getString(HTTP_SERVER_HOST, "127.0.0.1");
@@ -107,55 +116,89 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
             if (ar.succeeded()) {
                 LOGGER.info("Vert.x HTTP Server started: " + ar.result());
                 startFuture.complete();
+                LOGGER.debug("Finising INIT");
             } else {
                 startFuture.fail(ar.cause());
             }
         });
-
     }
 
-    private void sendError(RoutingContext context, String id, Throwable th) {
+    private void sendError(RoutingContext rc, String id, Throwable th) {
         final String msg = "Error occured while looking key " + id + " in cache " + cache.getName();
         LOGGER.error(msg, th);
-        context.fail(HttpResponseStatus.INTERNAL_SERVER_ERROR.code());
-        context.fail(th);
+        rc.fail(HttpResponseStatus.INTERNAL_SERVER_ERROR.code());
+        rc.fail(th);
     }
 
-    protected void getSDO(RoutingContext context) {
-        final String id = context.request().getParam("id");
+    protected void getSDO(RoutingContext rc) {
+        final String id = rc.request().getParam("id");
+        LOGGER.debug("GET id: " + id);
         cache.getAsync(id).whenComplete((result, th) -> {
+            LOGGER.info("Cache get request for id=" + id + " completed");
             if (th != null) {
-                sendError(context, id, th);
+                sendError(rc, id, th);
                 return;
             }
-            final HttpServerResponse response = context.response();
+            final HttpServerResponse response = rc.response();
             if (result == null) {
-                response.setStatusCode(HttpResponseStatus.NOT_FOUND.code());
+                LOGGER.debug("Object Not found for id=" + id);
+                response.setStatusCode(HttpResponseStatus.NOT_FOUND.code()).end();
             } else {
-                response.write(result.toJson().encode());
+                LOGGER.debug("Object for id=" + id + " is : " + result.toJson().encode());
+                response.setStatusCode(HttpResponseStatus.OK.code()).putHeader("context-type", "application/json");
+                response.end(result.toJson().encode());
             }
-            response.end();
+            LOGGER.debug("Flushing response");
         });
     }
 
-    protected void addSDO(RoutingContext context) {
-        JsonObject o = context.getBodyAsJson();
+    protected void addSDO(RoutingContext rc) {
+        JsonObject o = rc.getBodyAsJson();
+        LOGGER.debug("POST reuest for OBJECT: " + o);
         SimpleDataObject sdo = new SimpleDataObject(o);
         final String id = sdo.getId();
         cache.putAsync(id, sdo).whenComplete((result, th) -> {
+            LOGGER.info("Cache put request for id=" + id + " completed with result: " + result);
             if (th != null) {
-                sendError(context, id, th);
+                sendError(rc, id, th);
                 return;
             }
-            final HttpServerResponse response = context.response();
-            if (result == null) {
-                response.setStatusCode(HttpResponseStatus.CREATED.code());
-            } else {
-                response.write(result.toJson().encode());
-            }
-            response.end();
-
+            rc.response().setStatusCode(HttpResponseStatus.CREATED.code()).putHeader("content-type", "application/json")
+                    .end(cache.get(id).toJson().toString());
         });
+    }
+
+    protected void updateSDO(RoutingContext rc) {
+        final String id = rc.request().getParam("id");
+        JsonObject o = rc.getBodyAsJson();
+        LOGGER.debug("UPDATE request for OBJECT: " + o + " with id: " + id);
+        SimpleDataObject sdo = new SimpleDataObject(o);
+        cache.replaceAsync(id, sdo).whenComplete((result, th) -> {
+            LOGGER.info("Cache update request for id=" + id + " completed with result: " + result);
+            if (th != null) {
+                sendError(rc, id, th);
+                return;
+            }
+            rc.response().setStatusCode(HttpResponseStatus.OK.code()).putHeader("content-type", "application/json")
+                    .end(cache.get(id).toJson().toString());
+        });
+    }
+
+    protected void removeSDO(RoutingContext rc) {
+        final String id = rc.request().getParam("id");
+        LOGGER.debug("DELETE request for id: " + id);
+        cache.removeAsync(id).whenCompleteAsync((result, th) -> {
+            if (th != null) {
+                sendError(rc, id, th);
+                return;
+            }
+            rc.response().setStatusCode(HttpResponseStatus.NO_CONTENT.code()).end();
+        });
+    }
+
+    protected void getROOT(RoutingContext rc) {
+        rc.response().putHeader("rc-type", "text/html").setStatusCode(HttpResponseStatus.OK.code())
+                .end("<html><body>OK/</body></html>\n");
 
     }
 

@@ -77,4 +77,28 @@ public class SimpleDataObject implements AbstractDataObject {
     public String toString() {
         return toStringAbstract();
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == null) {
+            return false;
+        }
+        if (o == this) {
+            return true;
+        }
+        if (!(o instanceof SimpleDataObject)) {
+            return false;
+        }
+        final SimpleDataObject sdo = (SimpleDataObject) o;
+        if (getId().equals(sdo.getId()) == false) {
+            return false;
+        }
+        if (getName() != null && getName().equals(sdo.getName()) == false) {
+            return false;
+        }
+        if (getOtherReference() != null && getOtherReference().equals(sdo.getOtherReference()) == false) {
+            return false;
+        }
+        return true;
+    }
 }
