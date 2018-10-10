@@ -78,7 +78,6 @@ public class DataGridVerticleTest {
         DeploymentOptions options = new DeploymentOptions();
         options.setConfig(new JsonObject().put("cache-name", CACHE_NAME));
         vertx.deployVerticle(DataGridVerticle.class, options, context.asyncAssertSuccess());
-        // context.async().awaitSuccess(20000);
     }
 
     @After

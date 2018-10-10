@@ -65,7 +65,6 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
                 startFuture.fail(result.cause());
             }
         });
-        // super.start(startFuture);
     }
 
     @Override
@@ -95,6 +94,7 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
         allowMethods.add(HttpMethod.POST);
         allowMethods.add(HttpMethod.DELETE);
         allowMethods.add(HttpMethod.PATCH);
+        allowMethods.add(HttpMethod.PUT);
 
         router.route().handler(CorsHandler.create("*").allowedHeaders(allowHeaders).allowedMethods(allowMethods));
 
@@ -114,10 +114,10 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
         }
         vertx.createHttpServer().requestHandler(router::accept).listen(port, host, ar -> {
             if (ar.succeeded()) {
-                LOGGER.info("Vert.x HTTP Server started: " + ar.result());
+                LOGGER.debug("Vert.x HTTP Server started: " + ar.result());
                 startFuture.complete();
-                LOGGER.debug("Finising INIT");
             } else {
+                LOGGER.error("Error while start Vert.x HTTP Server", ar.cause());
                 startFuture.fail(ar.cause());
             }
         });
@@ -188,6 +188,7 @@ public class DataGridVerticle<K, V> extends AbstractVerticle {
         final String id = rc.request().getParam("id");
         LOGGER.debug("DELETE request for id: " + id);
         cache.removeAsync(id).whenCompleteAsync((result, th) -> {
+            LOGGER.info("Cache delete request for id=" + id + " completed with result: " + result);
             if (th != null) {
                 sendError(rc, id, th);
                 return;
