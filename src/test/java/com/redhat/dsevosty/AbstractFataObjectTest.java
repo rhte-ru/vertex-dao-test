@@ -1,8 +1,7 @@
 package com.redhat.dsevosty;
 
-import org.hamcrest.CoreMatchers;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.assertj.core.api.Assertions.assertThat;
+import org.junit.jupiter.api.Test;
 
 public class AbstractFataObjectTest {
 
@@ -26,7 +25,7 @@ public class AbstractFataObjectTest {
 
         };
         System.out.println(dto.toStringAbstract());
-        Assert.assertThat(dto.toStringAbstract(), CoreMatchers.containsString("id: 1"));
-        Assert.assertThat(dto.toStringAbstract(), CoreMatchers.containsString("name: \"name 1\""));
+        assertThat(dto.toStringAbstract()).contains("id: 1");
+        assertThat(dto.toStringAbstract()).contains("name: \"name 1\"");
     }
 }
