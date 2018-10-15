@@ -37,7 +37,7 @@ public class SimpleDataObject implements AbstractDataObject {
         SimpleDataObjectConverter.fromJson(json, this);
     }
 
-    protected String defaultId() {
+    public static String defaultId() {
         return UUID.randomUUID().toString();
     }
 

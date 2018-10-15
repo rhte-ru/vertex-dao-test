@@ -47,8 +47,9 @@ public class DataGridVerticleTest {
     private static EmbeddedCacheManager cacheManager = null;
     // private HotRodServer hotrodServer = null;
 
-    private SimpleDataObject sdo = new SimpleDataObject(null, "name 1", null);
-    private String myId = sdo.getId();
+    private static final String SDO_ID = SimpleDataObject.defaultId();
+
+    private static final SimpleDataObject SDO = new SimpleDataObject(null, "name 1", null);
 
     @BeforeAll
     public static void setUp(Vertx vertx, VertxTestContext context) throws InterruptedException {
@@ -61,6 +62,7 @@ public class DataGridVerticleTest {
             Cache<String, SimpleDataObject> cache = cm.<String, SimpleDataObject>getCache(CACHE_NAME);
             LOGGER.debug("CACHE: " + cache + " got");
             cacheManager = cm;
+            cache.put(SDO_ID, SDO);
             // future.complete(cm);
         // }, result -> {
         //     if (result.succeeded()) {
@@ -114,19 +116,20 @@ public class DataGridVerticleTest {
     @DisplayName("Datagrid Cache Direct Test")
     @Test
     public void directCacheTest(Vertx vertx, VertxTestContext context) throws InterruptedException {
+        final SimpleDataObject sdo = new SimpleDataObject(null, "name 123", null);
         sdo.setOtherReference(sdo.getId());
         org.infinispan.client.hotrod.configuration.ConfigurationBuilder builder = new org.infinispan.client.hotrod.configuration.ConfigurationBuilder();
         builder.addServer().host(HOTROD_SERVER_HOST).port(HOTROD_SERVER_PORT);
         RemoteCache<String, SimpleDataObject> cache = new RemoteCacheManager(builder.build()).getCache(CACHE_NAME);
         LOGGER.info("REMOTE CACHE: " + cache + " got");
-        LOGGER.info("PUT OBJECT: " + cache.put(myId, sdo));
+        LOGGER.info("PUT OBJECT: " + cache.put(SDO_ID, sdo));
 
-        SimpleDataObject sdo2 = cache.get(myId);
+        SimpleDataObject sdo2 = cache.get(SDO_ID);
         LOGGER.info("GET OBJECT: " + sdo2.toJson().encodePrettily());
         assertThat(sdo2).isNotNull();
         assertThat(sdo2.getName()).isEqualTo(sdo.getName());
-        cache.remove(myId);
-        assertThat(cache.get(myId)).isNull();
+        // cache.remove(SDO_ID);
+        // assertThat(cache.get(SDO_ID)).isNull();
         context.completeNow();
     }
 
@@ -144,6 +147,7 @@ public class DataGridVerticleTest {
     public void createSDO(Vertx vertx, VertxTestContext context) {
         Checkpoint post = context.checkpoint();
         final HttpClient http = vertx.createHttpClient();
+        final SimpleDataObject sdo = new SimpleDataObject(null, "name 2", null);
         http.post(HTTP_PORT, HTTP_HOST, "/sdo").handler(response -> {
             final int statusCode = response.statusCode();
             LOGGER.info("StatusCode on post request for sdo=" + sdo + " is " + statusCode);
@@ -161,10 +165,10 @@ public class DataGridVerticleTest {
     public void getSDO(Vertx vertx, VertxTestContext context) {
         Checkpoint get = context.checkpoint();
         final HttpClient http = vertx.createHttpClient();
-        http.getNow(HTTP_PORT, HTTP_HOST, "/sdo/" + myId, response -> response.handler(body -> {
+        http.getNow(HTTP_PORT, HTTP_HOST, "/sdo/" + SDO_ID, response -> response.handler(body -> {
             LOGGER.info("StatusCode: " + response.statusCode() + "\nBody: " + body);
             assertThat(response.statusCode()).isEqualByComparingTo(HttpResponseStatus.OK.code());
-            assertThat(sdo).isEqualTo(new SimpleDataObject(new JsonObject(body)));
+            assertThat(SDO).isEqualTo(new SimpleDataObject(new JsonObject(body)));
             get.flag();
         }));
         // get.awaitSuccess(1000);
@@ -173,30 +177,30 @@ public class DataGridVerticleTest {
 
     public void updateSDO(Vertx vertx, VertxTestContext context) {
         Checkpoint update = context.checkpoint();
-        sdo.setOtherReference(null);
+        SDO.setOtherReference(null);
         final HttpClient http = vertx.createHttpClient();
-        http.put(HTTP_PORT, HTTP_HOST, "/sdo/" + myId).handler(response -> {
+        http.put(HTTP_PORT, HTTP_HOST, "/sdo/" + SDO_ID).handler(response -> {
             final int statusCode = response.statusCode();
-            LOGGER.info("StatusCode on update request for sdo=" + sdo + " is " + statusCode);
+            LOGGER.info("StatusCode on update request for sdo=" + SDO + " is " + statusCode);
             assertThat(statusCode).isEqualTo(HttpResponseStatus.OK.code());
             response.bodyHandler(body -> {
-                assertThat(sdo).isEqualTo(new SimpleDataObject(new JsonObject(body)));
+                assertThat(SDO).isEqualTo(new SimpleDataObject(new JsonObject(body)));
                 update.flag();
             });
-        }).end(sdo.toJson().toString());
+        }).end(SDO.toJson().toString());
         // update.awaitSuccess(1000);
 
         Checkpoint delete = context.checkpoint();
-        http.delete(HTTP_PORT, HTTP_HOST, "/sdo/" + myId).handler(response -> {
+        http.delete(HTTP_PORT, HTTP_HOST, "/sdo/" + SDO_ID).handler(response -> {
             final int statusCode = response.statusCode();
-            LOGGER.info("StatusCode on delete request for sdo=" + sdo + " is " + statusCode);
+            LOGGER.info("StatusCode on delete request for sdo=" + SDO + " is " + statusCode);
             assertThat(statusCode).isEqualTo(HttpResponseStatus.NO_CONTENT.code());
             delete.flag();
         }).end();
         // delete.awaitSuccess(1000);
 
         Checkpoint get2 = context.checkpoint();
-        http.getNow(HTTP_PORT, HTTP_HOST, "/sdo/" + myId, response -> {
+        http.getNow(HTTP_PORT, HTTP_HOST, "/sdo/" + SDO_ID, response -> {
             assertThat(response.statusCode()).isEqualTo(HttpResponseStatus.NOT_FOUND.code());
             get2.flag();
             context.completeNow();
