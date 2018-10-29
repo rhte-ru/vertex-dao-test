@@ -11,10 +11,11 @@ public class AbstractFataObjectTest {
 
     @Test
     public void testAbstractDataObjectToString() {
+        UUID myid = UUID.randomUUID();
         AbstractDataObject dto = new AbstractDataObject() {
             @SuppressWarnings("unused")
             private static final long serialVersionUID = 0;
-            private UUID id = UUID.fromString("1");
+            private UUID id = myid;
             private String name = "name 1";
 
             @SuppressWarnings("unused")
@@ -38,7 +39,7 @@ public class AbstractFataObjectTest {
 
         };
         System.out.println(dto.toStringAbstract());
-        assertThat(dto.toStringAbstract()).contains("id: 1");
+        assertThat(dto.toStringAbstract()).contains("id: " + myid);
         assertThat(dto.toStringAbstract()).contains("name: \"name 1\"");
     }
 }

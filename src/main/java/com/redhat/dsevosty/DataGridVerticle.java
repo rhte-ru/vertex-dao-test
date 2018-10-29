@@ -221,6 +221,7 @@ public abstract class DataGridVerticle extends AbstractVerticle {
 
     protected void initConfiguration() {
         JsonObject vertxConfig = config();
+        LOGGER.info("Vert.x config: " + vertxConfig);
         hotrodServerHost = vertxConfig.getString(INFINISPAN_HOTROD_SERVER_HOST, "127.0.0.1");
         hotrodServerPort = vertxConfig.getInteger(INFINISPAN_HOTROD_SERVER_PORT, 11222);
         httpServerHost = vertxConfig.getString(VERTX_HTTP_SERVER_HOST, "127.0.0.1");
