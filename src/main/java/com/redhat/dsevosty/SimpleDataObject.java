@@ -1,5 +1,6 @@
 package com.redhat.dsevosty;
 
+import java.util.Objects;
 import java.util.UUID;
 import io.vertx.core.json.JsonObject;
 import io.vertx.codegen.annotations.DataObject;
@@ -11,9 +12,9 @@ public class SimpleDataObject implements AbstractDataObject {
     @SuppressWarnings("unused")
     private static final long serialVersionUID = 1;
 
-    private String id;
+    private UUID id;
     private String name;
-    private String otherReference;
+    private UUID otherReference;
 
     public SimpleDataObject() {
         this.id = defaultId();
@@ -27,7 +28,7 @@ public class SimpleDataObject implements AbstractDataObject {
         this.otherReference = other.otherReference;
     }
 
-    public SimpleDataObject(String id, String name, String ref) {
+    public SimpleDataObject(UUID id, String name, UUID ref) {
         this.id = id;
         this.name = name;
         this.otherReference = ref;
@@ -37,18 +38,19 @@ public class SimpleDataObject implements AbstractDataObject {
         SimpleDataObjectConverter.fromJson(json, this);
     }
 
-    public static String defaultId() {
-        return UUID.randomUUID().toString();
+    public static UUID defaultId() {
+        return UUID.randomUUID();
     }
 
-    public String getId() {
+    @Override
+    public UUID getId() {
         if (id == null) {
             id = defaultId();
         }
         return id;
     }
 
-    public void setId(String id) {
+    public void setId(UUID id) {
         this.id = id;
     }
 
@@ -60,14 +62,15 @@ public class SimpleDataObject implements AbstractDataObject {
         this.name = name;
     }
 
-    public String getOtherReference() {
+    public UUID getOtherReference() {
         return otherReference;
     }
 
-    public void setOtherReference(String otherReference) {
+    public void setOtherReference(UUID otherReference) {
         this.otherReference = otherReference;
     }
 
+    @Override
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
         SimpleDataObjectConverter.toJson(this, json);
@@ -76,6 +79,11 @@ public class SimpleDataObject implements AbstractDataObject {
 
     public String toString() {
         return toStringAbstract();
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(getId(), getName(), getOtherReference());
     }
 
     @Override
@@ -89,16 +97,8 @@ public class SimpleDataObject implements AbstractDataObject {
         if (!(o instanceof SimpleDataObject)) {
             return false;
         }
-        final SimpleDataObject sdo = (SimpleDataObject) o;
-        if (getId().equals(sdo.getId()) == false) {
-            return false;
-        }
-        if (getName() != null && getName().equals(sdo.getName()) == false) {
-            return false;
-        }
-        if (getOtherReference() != null && getOtherReference().equals(sdo.getOtherReference()) == false) {
-            return false;
-        }
-        return true;
+        SimpleDataObject other = (SimpleDataObject) o;
+        return Objects.equals(getId(), other.getId()) && Objects.equals(getName(), other.getName())
+                && Objects.equals(getOtherReference(), other.getOtherReference());
     }
 }

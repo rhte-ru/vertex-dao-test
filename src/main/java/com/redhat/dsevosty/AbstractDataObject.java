@@ -6,17 +6,22 @@ import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
 import java.util.List;
+import java.util.UUID;
 import java.util.stream.Collectors;
+
+import io.vertx.core.json.JsonObject;
 
 public interface AbstractDataObject extends Serializable {
 
+    public UUID getId();
+    public JsonObject toJson();
+
     default String toStringAbstract() {
         StringBuffer sb = new StringBuffer();
-        Class< ? > clazz = getClass();
+        Class<?> clazz = getClass();
         Method[] methods = clazz.getDeclaredMethods();
-        List<Method> methodList =
-                                  Arrays.asList(methods).stream().filter(method -> Modifier.isPublic(method.getModifiers()))
-                                        .collect(Collectors.toList());
+        List<Method> methodList = Arrays.asList(methods).stream()
+                .filter(method -> Modifier.isPublic(method.getModifiers())).collect(Collectors.toList());
         sb.append("[ ").append(clazz.getName()).append(" -> { ");
         for (Method method : methodList) {
             if (method.getParameterCount() != 0) {

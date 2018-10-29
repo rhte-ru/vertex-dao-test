@@ -3,6 +3,10 @@ package com.redhat.dsevosty;
 import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.Test;
 
+import io.vertx.core.json.JsonObject;
+
+import java.util.UUID;
+
 public class AbstractFataObjectTest {
 
     @Test
@@ -10,7 +14,7 @@ public class AbstractFataObjectTest {
         AbstractDataObject dto = new AbstractDataObject() {
             @SuppressWarnings("unused")
             private static final long serialVersionUID = 0;
-            private int id = 1;
+            private UUID id = UUID.fromString("1");
             private String name = "name 1";
 
             @SuppressWarnings("unused")
@@ -18,10 +22,19 @@ public class AbstractFataObjectTest {
                 return name;
             }
 
-            @SuppressWarnings("unused")
-            public int getId() {
+            // @SuppressWarnings("unused")
+            @Override
+            public UUID getId() {
                 return id;
             }
+
+            @Override
+			public JsonObject toJson() {
+                JsonObject json = new JsonObject();
+                json.put("id", getId());
+                json.put("name", getName());
+				return json;
+			}
 
         };
         System.out.println(dto.toStringAbstract());

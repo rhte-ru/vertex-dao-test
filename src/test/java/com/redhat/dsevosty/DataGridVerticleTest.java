@@ -28,8 +28,9 @@ import io.vertx.junit5.VertxTestContext;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.ServerSocket;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
-
 
 @ExtendWith(VertxExtension.class)
 public class DataGridVerticleTest {
@@ -38,62 +39,47 @@ public class DataGridVerticleTest {
 
     private static final String HOTROD_SERVER_HOST = "127.0.0.1";
     private static final int HOTROD_SERVER_PORT = 11222;
-    // private static final String HTTP_SERVER_PORT = "http.port";
     private static final String CACHE_NAME = "sdo";
 
     private static final String HTTP_HOST = "127.0.0.1";
     private static final int HTTP_PORT = 8080;
 
     private static EmbeddedCacheManager cacheManager = null;
-    // private HotRodServer hotrodServer = null;
 
-    private static final String SDO_ID = SimpleDataObject.defaultId();
+    private static final UUID SDO_ID = SimpleDataObject.defaultId();
 
     private static final SimpleDataObject SDO = new SimpleDataObject(null, "name 1", null);
 
     @BeforeAll
     public static void setUp(Vertx vertx, VertxTestContext context) throws InterruptedException {
-
-        // Checkpoint cacheManagerCheckpoint = context.checkpoint();
-        // vertx.<EmbeddedCacheManager>executeBlocking(future -> {
-            EmbeddedCacheManager cm = new DefaultCacheManager();
-            LOGGER.debug("CacheManager: " + cm);
-            cm.defineConfiguration(CACHE_NAME, new ConfigurationBuilder().build());
-            Cache<String, SimpleDataObject> cache = cm.<String, SimpleDataObject>getCache(CACHE_NAME);
-            LOGGER.debug("CACHE: " + cache + " got");
-            cacheManager = cm;
-            cache.put(SDO_ID, SDO);
-            // future.complete(cm);
-        // }, result -> {
-        //     if (result.succeeded()) {
-        //         cacheManager = result.result();
-        //         cacheManagerCheckpoint.flag();
-        //     } else {
-        //         LOGGER.error("Error during create EmbeddedCacheManager", result.cause());
-        //     }
-        // });
-        // cacheManagerCheckpoint. .awaitSuccess(10000);
-
-        // Checkpoint hostrodServerCheckpoint = context.checkpoint();
-        // vertx.<HotRodServer>executeBlocking(future -> {
-            HotRodServer srv = new HotRodServer();
-            HotRodServerConfigurationBuilder config = new HotRodServerConfigurationBuilder().host(HOTROD_SERVER_HOST)
-                    .defaultCacheName(CACHE_NAME).port(HOTROD_SERVER_PORT);
-            srv.start(config.build(), cacheManager);
-            LOGGER.info("HotRod Server " + srv + " started");
-        //     future.complete(srv);
-        // }, result -> {
-        //     if (result.succeeded()) {
-        //         // hotrodServer = result.result();
-        //         hostrodServerCheckpoint.flag();
-        //     } else {
-        //         LOGGER.error("Error during create HotRodServer", result.cause());
-        //     }
-        // });
-        // hostrodServerAsync.awaitSuccess(10000);
-        
+        EmbeddedCacheManager cm = new DefaultCacheManager();
+        LOGGER.debug("CacheManager: " + cm);
+        cm.defineConfiguration(CACHE_NAME, new ConfigurationBuilder().build());
+        Cache<UUID, SimpleDataObject> cache = cm.<UUID, SimpleDataObject>getCache(CACHE_NAME);
+        LOGGER.debug("Cache: " + cache);
+        cacheManager = cm;
+        cache.put(SDO_ID, SDO);
+        HotRodServer srv = new HotRodServer();
+        HotRodServerConfigurationBuilder config = new HotRodServerConfigurationBuilder().host(HOTROD_SERVER_HOST)
+                .defaultCacheName(CACHE_NAME).port(HOTROD_SERVER_PORT);
+        srv.start(config.build(), cacheManager);
+        LOGGER.info("HotRod Server " + srv + " started");
         DeploymentOptions options = new DeploymentOptions();
-        options.setConfig(new JsonObject().put("cache-name", CACHE_NAME));
+        JsonObject vertxConfig = new JsonObject();
+        vertxConfig.put(DataGridVerticle.INFINISPAN_HOTROD_SERVER_HOST, HOTROD_SERVER_HOST);
+        vertxConfig.put(DataGridVerticle.INFINISPAN_HOTROD_SERVER_PORT, HOTROD_SERVER_PORT);
+        int port = 0;
+        try {
+            ServerSocket socket = new ServerSocket(port);
+            port = socket.getLocalPort();
+            socket.close();
+        } catch (Exception e) {
+            port = HTTP_PORT;
+        }
+        vertxConfig.put(DataGridVerticle.INFINISPAN_HOTROD_SERVER_HOST, HOTROD_SERVER_HOST);
+        vertxConfig.put(DataGridVerticle.VERTX_HTTP_SERVER_ENABLED, true);
+        vertxConfig.put(DataGridVerticle.VERTX_HTTP_SERVER_PORT, port);
+        options.setConfig(vertxConfig);
         vertx.deployVerticle(DataGridVerticle.class, options, context.succeeding(ar -> context.completeNow()));
         context.awaitCompletion(5, TimeUnit.SECONDS);
     }
@@ -104,38 +90,26 @@ public class DataGridVerticleTest {
             context.completeNow();
         }));
         context.awaitCompletion(5, TimeUnit.SECONDS);
-        // if (hotrodServer != null) {
-        // hotrodServer.getTransport().stop();
-        // hotrodServer.stop();
-        //
-        // if (cacheManager != null) {
-        // cacheManager.stop();
-        //
     }
 
-    @DisplayName("Datagrid Cache Direct Test")
     @Test
     public void directCacheTest(Vertx vertx, VertxTestContext context) throws InterruptedException {
         final SimpleDataObject sdo = new SimpleDataObject(null, "name 123", null);
         sdo.setOtherReference(sdo.getId());
         org.infinispan.client.hotrod.configuration.ConfigurationBuilder builder = new org.infinispan.client.hotrod.configuration.ConfigurationBuilder();
         builder.addServer().host(HOTROD_SERVER_HOST).port(HOTROD_SERVER_PORT);
-        RemoteCache<String, SimpleDataObject> cache = new RemoteCacheManager(builder.build()).getCache(CACHE_NAME);
+        RemoteCache<UUID, SimpleDataObject> cache = new RemoteCacheManager(builder.build()).getCache(CACHE_NAME);
         LOGGER.info("REMOTE CACHE: " + cache + " got");
         LOGGER.info("PUT OBJECT: " + cache.put(SDO_ID, sdo));
-
         SimpleDataObject sdo2 = cache.get(SDO_ID);
         LOGGER.info("GET OBJECT: " + sdo2.toJson().encodePrettily());
         assertThat(sdo2).isNotNull();
         assertThat(sdo2.getName()).isEqualTo(sdo.getName());
-        // cache.remove(SDO_ID);
-        // assertThat(cache.get(SDO_ID)).isNull();
         context.completeNow();
     }
 
     @Test
     public void testROOT(Vertx vertx, VertxTestContext context) {
-        // Checkpoint async = context.checkpoint();
         final HttpClient http = vertx.createHttpClient();
         http.getNow(HTTP_PORT, HTTP_HOST, "/", response -> response.handler(body -> {
             LOGGER.info(body.toString());
@@ -160,7 +134,7 @@ public class DataGridVerticleTest {
         // post.awaitSuccess(1000);
         context.completeNow();
     }
-    
+
     @Test
     public void getSDO(Vertx vertx, VertxTestContext context) {
         Checkpoint get = context.checkpoint();
@@ -207,11 +181,10 @@ public class DataGridVerticleTest {
         });
         // get2.awaitSuccess(1000);
 
-/*        if (post.isCompleted() && get.isCompleted() && update.isCompleted() && delete.isCompleted()
-                && get2.isCompleted()) {
-            async.complete();
-        }
-        */
+        /*
+         * if (post.isCompleted() && get.isCompleted() && update.isCompleted() &&
+         * delete.isCompleted() && get2.isCompleted()) { async.complete(); }
+         */
         // async.awaitSuccess(6000);
         // context.completeNow();
     }
