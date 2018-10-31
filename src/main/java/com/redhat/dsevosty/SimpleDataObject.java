@@ -3,10 +3,10 @@ package com.redhat.dsevosty;
 import java.util.Objects;
 import java.util.UUID;
 import io.vertx.core.json.JsonObject;
-import io.vertx.codegen.annotations.DataObject;
+// import io.vertx.codegen.annotations.DataObject;
 // import io.vertx.codegen.annotations.ModuleGen;
 
-@DataObject(generateConverter = true)
+// @DataObject(generateConverter = true)
 public class SimpleDataObject implements AbstractDataObject {
 
     @SuppressWarnings("unused")
@@ -35,7 +35,19 @@ public class SimpleDataObject implements AbstractDataObject {
     }
 
     public SimpleDataObject(JsonObject json) {
-        SimpleDataObjectConverter.fromJson(json, this);
+        String val;
+        val = json.getString("id");
+        if (val != null) {
+            id = UUID.fromString(val);
+        }
+        val = json.getString("name");
+        if (val != null) {
+            name = val;
+        }
+        val = json.getString("otherReference");
+        if (val != null) {
+            otherReference = UUID.fromString(val);
+        }
     }
 
     public static UUID defaultId() {
@@ -73,7 +85,15 @@ public class SimpleDataObject implements AbstractDataObject {
     @Override
     public JsonObject toJson() {
         JsonObject json = new JsonObject();
-        SimpleDataObjectConverter.toJson(this, json);
+        if (id != null) {
+            json.put("id", id.toString());
+        }
+        if (name != null) {
+            json.put("name", name);
+        }
+        if (otherReference != null) {
+            json.put("otherReference", otherReference.toString());
+        }
         return json;
     }
 

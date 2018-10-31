@@ -7,7 +7,7 @@ import io.vertx.core.json.JsonObject;
 
 import java.util.UUID;
 
-public class AbstractFataObjectTest {
+public class AbstractDataObjectTest {
 
     @Test
     public void testAbstractDataObjectToString() {
@@ -18,13 +18,10 @@ public class AbstractFataObjectTest {
             private UUID id = myid;
             private String name = "name 1";
 
-            @SuppressWarnings("unused")
             public String getName() {
                 return name;
             }
 
-            // @SuppressWarnings("unused")
-            @Override
             public UUID getId() {
                 return id;
             }
@@ -32,14 +29,14 @@ public class AbstractFataObjectTest {
             @Override
 			public JsonObject toJson() {
                 JsonObject json = new JsonObject();
-                json.put("id", getId());
+                json.put("id", getId().toString());
                 json.put("name", getName());
 				return json;
 			}
 
         };
         System.out.println(dto.toStringAbstract());
-        assertThat(dto.toStringAbstract()).contains("id: " + myid);
-        assertThat(dto.toStringAbstract()).contains("name: \"name 1\"");
+        assertThat(dto.toJson().toString()).contains("\"id\":\"" + myid + "\"");
+        assertThat(dto.toJson().toString()).contains("\"name\":\"name 1\"");
     }
 }
