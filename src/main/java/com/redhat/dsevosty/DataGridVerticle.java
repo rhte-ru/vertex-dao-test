@@ -24,7 +24,7 @@ import io.vertx.ext.web.RoutingContext;
 import io.vertx.ext.web.handler.BodyHandler;
 import io.vertx.ext.web.handler.CorsHandler;
 
-public class DataGridVerticle extends AbstractVerticle {
+public abstract class DataGridVerticle extends AbstractVerticle {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(DataGridVerticle.class);
     private static final String HTTP_GET_PARAMETER_ID = "id";
@@ -157,9 +157,7 @@ public class DataGridVerticle extends AbstractVerticle {
         rc.fail(th);
     }
 
-    protected SimpleDataObject abstractObjectFromJson(JsonObject json) {
-        return new SimpleDataObject(json);
-    }
+    protected abstract AbstractDataObject abstractObjectFromJson(JsonObject json);
 
     protected void getDataObject(RoutingContext rc) {
         final UUID id = UUID.fromString(rc.request().getParam(HTTP_GET_PARAMETER_ID));
@@ -239,7 +237,7 @@ public class DataGridVerticle extends AbstractVerticle {
         httpServerPort = vertxConfig.getInteger(VERTX_HTTP_SERVER_PORT, 8181);
         isRestInterfaceEnabled = vertxConfig.getBoolean(VERTX_HTTP_SERVER_ENABLED, false);
         publicContextName = vertxConfig.getString(PUBLIC_CONTEXT_NAME, "dgv");
-        final String info = "Verticle '{}' initialized with attributes:\n"
+        final String info = "\nVerticle '{}' initialized with attributes:\n"
                 + "INFINISPAN_HOTROD_SERVER_HOST - {}\nINFINISPAN_HOTROD_SERVER_PORT - {}\n"
                 + "VERTX_HTTP_SERVER_ENABLED - {}\nVERTX_HTTP_SERVER_HOST - {}\nVERTX_HTTP_SERVER_PORT - {}\n"
                 + "PUBLIC_CONTEXT_NAME - {}\n";

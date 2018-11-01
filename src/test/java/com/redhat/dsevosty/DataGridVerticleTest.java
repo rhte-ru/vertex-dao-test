@@ -6,8 +6,6 @@ import java.net.ServerSocket;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
-import org.infinispan.client.hotrod.RemoteCache;
-import org.infinispan.client.hotrod.RemoteCacheManager;
 import org.infinispan.configuration.cache.ConfigurationBuilder;
 import org.infinispan.server.hotrod.configuration.HotRodServerConfigurationBuilder;
 import org.junit.jupiter.api.AfterAll;
@@ -44,13 +42,14 @@ public class DataGridVerticleTest {
     private static final SimpleDataObject SDO = new SimpleDataObject(SDO_ID, "name 1", SDO_ID);
 
     private static int httpPort = 0;
-    private static InfinispanLocalHotrodServer<UUID, SimpleDataObject> server;
+    private static InfinispanLocalHotrodServer<UUID, AbstractDataObject> server;
+    private HttpClient http;
 
     @BeforeAll
     public static void setUp(Vertx vertx, VertxTestContext context) throws InterruptedException {
         HotRodServerConfigurationBuilder config = new HotRodServerConfigurationBuilder().host(HOTROD_SERVER_HOST)
                 .defaultCacheName(PUBLIC_CONTEXT_NAME).port(HOTROD_SERVER_PORT);
-        server = new InfinispanLocalHotrodServer<UUID, SimpleDataObject>(new ConfigurationBuilder().build(),
+        server = new InfinispanLocalHotrodServer<UUID, AbstractDataObject>(new ConfigurationBuilder().build(),
                 config.build());
         server.getCache().put(SDO_ID, SDO);
         DeploymentOptions options = new DeploymentOptions();
@@ -70,18 +69,18 @@ public class DataGridVerticleTest {
         vertxConfig.put(DataGridVerticle.VERTX_HTTP_SERVER_PORT, httpPort);
         LOGGER.info("Configuring to run Vert.x HTTP Server on port: " + httpPort);
         options.setConfig(vertxConfig);
-        // vertx.deployVerticle(DataGridVerticle.class, options, context.succeeding(ar
-        // -> context.completeNow()));
-        vertx.deployVerticle(DataGridVerticle.class, options, ar -> {
-            if (ar.failed()) {
-                LOGGER.error("Error while deploying Verticle", ar.cause());
-                context.failNow(ar.cause());
-            }
-            if (ar.succeeded()) {
-                LOGGER.info("HotRod Server={} initialized", server);
-                context.completeNow();
-            }
-        });
+        vertx.deployVerticle(SimpleDataObjectDataGridVerticle.class, options,
+                context.succeeding(ar -> context.completeNow()));
+        // vertx.deployVerticle(SimpleDataObjectDataGridVerticle.class, options, ar -> {
+        // if (ar.failed()) {
+        // LOGGER.error("Error while deploying Verticle", ar.cause());
+        // context.failNow(ar.cause());
+        // }
+        // if (ar.succeeded()) {
+        // LOGGER.info("HotRod Server={} initialized", server);
+        // context.completeNow();
+        // }
+        // });
         // context.awaitCompletion(5, TimeUnit.MINUTES);
     }
 
@@ -97,24 +96,22 @@ public class DataGridVerticleTest {
     }
 
     // @Test
-    public void directCacheTest(Vertx vertx, VertxTestContext context) throws InterruptedException {
-        SimpleDataObject sdo = new SimpleDataObject();
-        sdo.setOtherReference(sdo.getId());
-        org.infinispan.client.hotrod.configuration.ConfigurationBuilder builder = new org.infinispan.client.hotrod.configuration.ConfigurationBuilder();
-        builder.addServer().host(HOTROD_SERVER_HOST).port(HOTROD_SERVER_PORT);
-        RemoteCacheManager rmc = new RemoteCacheManager(builder.build());
-        rmc.start();
-        RemoteCache<Object, SimpleDataObject> cache = rmc.getCache(PUBLIC_CONTEXT_NAME);
-        LOGGER.info("GOT Remote Cache: " + cache);
-        cache.put(SDO_ID, sdo);
-        SimpleDataObject sdo2 = cache.get(SDO_ID);
-        LOGGER.info("GET OBJECT: " + sdo2.toJson().toString());
-        assertThat(sdo2).isNotNull();
-        assertThat(sdo2.getName()).isEqualTo(sdo.getName());
-        context.completeNow();
-    }
-
-    private HttpClient http;
+    // public void directCacheTest(Vertx vertx, VertxTestContext context) throws InterruptedException {
+    //     SimpleDataObject sdo = new SimpleDataObject();
+    //     sdo.setOtherReference(sdo.getId());
+    //     org.infinispan.client.hotrod.configuration.ConfigurationBuilder builder = new org.infinispan.client.hotrod.configuration.ConfigurationBuilder();
+    //     builder.addServer().host(HOTROD_SERVER_HOST).port(HOTROD_SERVER_PORT);
+    //     RemoteCacheManager rmc = new RemoteCacheManager(builder.build());
+    //     rmc.start();
+    //     RemoteCache<Object, SimpleDataObject> cache = rmc.getCache(PUBLIC_CONTEXT_NAME);
+    //     LOGGER.info("GOT Remote Cache: " + cache);
+    //     cache.put(SDO_ID, sdo);
+    //     SimpleDataObject sdo2 = cache.get(SDO_ID);
+    //     LOGGER.info("GET OBJECT: " + sdo2.toJson().toString());
+    //     assertThat(sdo2).isNotNull();
+    //     assertThat(sdo2.getName()).isEqualTo(sdo.getName());
+    //     context.completeNow();
+    // }
 
     @BeforeEach
     public void before(Vertx vertx, VertxTestContext context) {
