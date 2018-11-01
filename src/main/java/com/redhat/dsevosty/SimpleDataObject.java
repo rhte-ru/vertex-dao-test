@@ -3,10 +3,7 @@ package com.redhat.dsevosty;
 import java.util.Objects;
 import java.util.UUID;
 import io.vertx.core.json.JsonObject;
-// import io.vertx.codegen.annotations.DataObject;
-// import io.vertx.codegen.annotations.ModuleGen;
 
-// @DataObject(generateConverter = true)
 public class SimpleDataObject implements AbstractDataObject {
 
     @SuppressWarnings("unused")
