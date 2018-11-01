@@ -188,10 +188,8 @@ public class DataGridVerticle extends AbstractVerticle {
         LOGGER.debug("Requesting (HTTP/POST) for o={}...", o);
         AbstractDataObject ado = abstractObjectFromJson(o);
         final UUID id = ado.getId();
-        // RemoteCache<UUID, AbstractDataObject> cache =
-        // manager.getCache(publicContextName);
         cache.putAsync(id, ado).whenComplete((result, th) -> {
-            LOGGER.debug("Cache PUT for id={}  completed with result: {}", id, result);
+            LOGGER.debug("Cache PUT for id={}  completed with result: {}", id, th);
             if (th != null) {
                 sendError(rc, id, th);
                 return;

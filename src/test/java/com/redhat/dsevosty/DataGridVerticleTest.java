@@ -129,7 +129,7 @@ public class DataGridVerticleTest {
         http.close();
         context.completeNow();
     }
-    
+
     @Test
     public void testROOT(Vertx vertx, VertxTestContext context) throws InterruptedException {
         final String path = "/";
@@ -174,12 +174,13 @@ public class DataGridVerticleTest {
         context.awaitCompletion(2, TimeUnit.SECONDS);
     }
 
-    // @Test
+    @Test
     public void updateSDO(Vertx vertx, VertxTestContext context) throws InterruptedException {
         final String path = "/sdo/" + SDO_ID;
         LOGGER.trace("updateSDO: HTTP CALL: {}", path);
         Checkpoint update = context.checkpoint();
         SDO.setOtherReference(null);
+        SDO.setName("Updated Name");
         http.put(httpPort, HTTP_HOST, path).handler(response -> {
             final int statusCode = response.statusCode();
             LOGGER.info("StatusCode on update request for sdo=" + SDO + " is " + statusCode);
@@ -189,8 +190,13 @@ public class DataGridVerticleTest {
                 update.flag();
             });
         }).end(SDO.toJson().toString());
-        // update.awaitSuccess(1000);
+        context.awaitCompletion(2, TimeUnit.SECONDS);
+    }
 
+    @Test
+    public void removeSDO(Vertx vertx, VertxTestContext context) throws InterruptedException {
+        final String path = "/sdo/" + SDO_ID;
+        LOGGER.trace("removeSDO: HTTP CALL: {}", path);
         Checkpoint delete = context.checkpoint();
         http.delete(httpPort, HTTP_HOST, path).handler(response -> {
             final int statusCode = response.statusCode();
@@ -207,13 +213,5 @@ public class DataGridVerticleTest {
         });
         context.awaitCompletion(2, TimeUnit.SECONDS);
 
-        // get2.awaitSuccess(1000);
-
-        /*
-         * if (post.isCompleted() && get.isCompleted() && update.isCompleted() &&
-         * delete.isCompleted() && get2.isCompleted()) { async.complete(); }
-         */
-        // async.awaitSuccess(6000);
-        // context.completeNow();
     }
 }
