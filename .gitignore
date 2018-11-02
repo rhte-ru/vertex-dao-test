@@ -1,8 +1,9 @@
-target
-**/asciidoc/**
-**/generated/**
 .classpath
 .project
 .settings
 .vscode
+bin
+target
+**/asciidoc/**
+**/generated/**
 
